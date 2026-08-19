@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-Enabled RAG Pipeline</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo-badge">⚡ Voice RAG</div>
+            <h1>Indic Voice Intelligence</h1>
+            <p class="subtitle">Sub-200ms Target Latency • Multi-Strategy Chunking • Indic Guardrails</p>
+        </header>
+
+        <main class="main-content">
+            <section class="input-card">
+                <div class="input-wrapper">
+                    <input type="text" id="queryInput" placeholder="Ask a question or tap the microphone to speak..." />
+                    <button id="recBtn" class="action-btn mic-btn" title="Record Audio">
+                        <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="22"></line>
+                        </svg>
+                        <span id="recText">Speak</span>
+                    </button>
+                    <button id="sendBtn" class="action-btn send-btn">Send</button>
+                </div>
+            </section>
+
+            <section class="response-card">
+                <div class="card-header">
+                    <h2>Response Output</h2>
+                    <span id="statusBadge" class="badge ready">Ready</span>
+                </div>
+                <div class="query-display" id="queryDisplay" style="display: none;">
+                    <span class="label">Query:</span> <span id="transcribedText"></span>
+                </div>
+                <div class="output-body" id="resultBox">
+                    System ready. Submit a text query or use voice input to test the pipeline.
+                </div>
+            </section>
+
+            <section class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Total Latency</span>
+                    <span class="metric-value highlight" id="mTotal">-- ms</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">STT Latency</span>
+                    <span class="metric-value" id="mStt">-- ms</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Retrieval</span>
+                    <span class="metric-value" id="mRetr">-- ms</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">LLM Latency</span>
+                    <span class="metric-value" id="mLlm">-- ms</span>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
