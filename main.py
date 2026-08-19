@@ -27,7 +27,7 @@ embedder = EmbeddingEngine()
 vstore = VectorStore(dimension=embedder.dimension)
 retriever = DenseRetriever(vstore, embedder)
 # Threshold calibrated for all-MiniLM-L6-v2 inner-product similarity
-guardrail = SafetyAndRelevanceGuardrail(similarity_threshold=0.01)
+guardrail = SafetyAndRelevanceGuardrail(similarity_threshold=0.35)
 llm_client = FastLLMClient()
 stt_client = SarvamSTTClient()
 harness = PipelineHarness(retriever, llm_client, guardrail)

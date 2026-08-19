@@ -9,3 +9,4 @@ python-dotenv>=1.0.1
 groq>=0.4.0
 tenacity>=8.2.0
 faiss-cpu>=1.8.0
+fastembed>=0.2.7
