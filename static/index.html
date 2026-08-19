@@ -3,66 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice-Enabled RAG Pipeline</title>
+    <title>aira — Indic Voice Intelligence</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;650&family=Newsreader:ital,opsz,wght@1,6..72,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <header class="app-header">
-            <div class="logo-badge">⚡ Voice RAG</div>
-            <h1>Indic Voice Intelligence</h1>
-            <p class="subtitle">Sub-200ms Target Latency • Multi-Strategy Chunking • Indic Guardrails</p>
-        </header>
 
-        <main class="main-content">
-            <section class="input-card">
-                <div class="input-wrapper">
-                    <input type="text" id="queryInput" placeholder="Ask a question or tap the microphone to speak..." />
-                    <button id="recBtn" class="action-btn mic-btn" title="Record Audio">
-                        <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                            <line x1="12" y1="19" x2="12" y2="22"></line>
+    <header class="min-header">
+        <div class="brand mono">aira</div>
+        <div class="header-right mono">
+            <div class="status-cluster">
+                <div id="minDot" class="min-dot"></div>
+                <span id="minStatus">idle</span>
+            </div>
+            <span class="header-sep">•</span>
+            <span class="header-tag">Voice RAG • Indic</span>
+        </div>
+    </header>
+
+    <div class="wrap">
+
+        <!-- LEFT: voice input panel -->
+        <div class="left">
+            <div id="voiceCenter" class="voice-center">
+
+                <div id="orbWrap" class="orb-wrap" tabindex="0" role="button" aria-label="Press to speak">
+                    <div class="aura aura-1"></div>
+                    <div class="aura aura-2"></div>
+                    <div id="hexOrb" class="hex-orb">
+                        <svg id="hexSvg" class="hex-svg" viewBox="0 0 100 100">
+                            <polygon id="hexPoly" class="hex-polygon" points=""></polygon>
+                            <g id="hexDots"></g>
                         </svg>
-                        <span id="recText">Speak</span>
-                    </button>
-                    <button id="sendBtn" class="action-btn send-btn">Send</button>
+                    </div>
+                    <div id="bars" class="bars">
+                        <div class="bar" style="--fill:30%"></div>
+                        <div class="bar" style="--fill:36%"></div>
+                        <div class="bar" style="--fill:32%"></div>
+                        <div class="bar" style="--fill:28%"></div>
+                    </div>
                 </div>
-            </section>
 
-            <section class="response-card">
-                <div class="card-header">
-                    <h2>Response Output</h2>
-                    <span id="statusBadge" class="badge ready">Ready</span>
+                <div class="orb-caption">
+                    <div class="label mono">press to speak. pause to submit.</div>
+                    <button id="typeBtn" class="mono type-link">or type your query</button>
                 </div>
-                <div class="query-display" id="queryDisplay" style="display: none;">
-                    <span class="label">Query:</span> <span id="transcribedText"></span>
-                </div>
-                <div class="output-body" id="resultBox">
-                    System ready. Submit a text query or use voice input to test the pipeline.
-                </div>
-            </section>
 
-            <section class="metrics-grid">
-                <div class="metric-card">
-                    <span class="metric-label">Total Latency</span>
-                    <span class="metric-value highlight" id="mTotal">-- ms</span>
+                <div class="hint-row">
+                    <div id="hint" class="label mono">live • voice reactive</div>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-label">STT Latency</span>
-                    <span class="metric-value" id="mStt">-- ms</span>
+            </div>
+
+            <div class="transcript-block">
+                <div class="section-line">
+                    <div class="label mono section-label">transcript</div>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-label">Retrieval</span>
-                    <span class="metric-value" id="mRetr">-- ms</span>
+                <div id="transcript" class="transcript-body">
+                    <span class="placeholder">your words will appear here...</span>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-label">LLM Latency</span>
-                    <span class="metric-value" id="mLlm">-- ms</span>
+                <div id="typeRow" class="type-row" style="display:none">
+                    <input type="text" id="queryInput" class="type-input" placeholder="type your question and hit enter…" />
+                    <button id="sendBtn" class="mono send-btn">Send</button>
                 </div>
-            </section>
-        </main>
+            </div>
+
+            <div class="metrics-block">
+                <div class="metric-cell">
+                    <span class="label mono metric-label">STT</span>
+                    <span id="m-stt" class="mono metric-value">--</span>
+                </div>
+                <div class="metric-cell">
+                    <span class="label mono metric-label">Retrieval</span>
+                    <span id="m-ret" class="mono metric-value">--</span>
+                </div>
+                <div class="metric-cell">
+                    <span class="label mono metric-label">LLM</span>
+                    <span id="m-llm" class="mono metric-value">--</span>
+                </div>
+                <div class="metric-cell">
+                    <span class="label mono metric-label">Total</span>
+                    <span id="m-total" class="mono metric-value highlight">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: response panel -->
+        <div class="right">
+            <div class="answer-kicker">
+                <div class="line"></div>
+                <div class="text mono" id="answerKickerText">Response</div>
+            </div>
+
+            <h1 class="answer-h1" id="answerHeadline">Ask a question or press the orb to speak — aira will listen, retrieve, and answer.</h1>
+
+            <div class="meta-row" id="metaRow" style="display:none">
+                <div class="meta-pill mono" id="statusPill">ready</div>
+                <div class="meta-pill mono" id="latencyPill">—</div>
+            </div>
+
+            <div class="sources-wrap" id="sourcesWrap" style="display:none">
+                <div class="sources-head">
+                    <div class="label mono" id="sourcesHead">Sources</div>
+                    <div class="line"></div>
+                </div>
+                <div id="sourcesList"></div>
+            </div>
+
+            <div class="right-footer">
+                <div class="footer-line"></div>
+                <div class="mono footer-text">Aira • Retrieval Experience</div>
+            </div>
+        </div>
+
     </div>
 
     <script src="/static/app.js"></script>
