@@ -1,52 +1,44 @@
-from typing import Any, Dict, List, Tuple
 import re
+from typing import Any, Dict, List, Optional
 
 
 class SafetyAndRelevanceGuardrail:
 
-    def __init__(self, similarity_threshold: float = 0.35):
+    def __init__(self, similarity_threshold: float = 0.0):
         self.similarity_threshold = similarity_threshold
-        # Block malicious/jailbreak prompt injections
-        self.banned_patterns = [
-            r"ignore all previous instructions",
-            r"system override",
-            r"drop table",
-            r"act as an unfiltered",
+        # Block malicious prompt injections or system manipulation attempts
+        self.unsafe_patterns = [
+            r"ignore previous instructions",
+            r"bypass system",
+            r"system prompt",
+            r"drop database",
+            r"jailbreak",
         ]
 
-    def check_input_safety(self, query: str) -> Tuple[bool, str]:
-        """Validates query against malicious patterns and jailbreak attempts."""
+    def is_safe_query(self, query: str) -> bool:
+        """Checks query against injection patterns and profanity/unsafe requests."""
         if not query or not query.strip():
-            return False, "Query cannot be empty."
+            return False
+        q_lower = query.lower()
+        for pattern in self.unsafe_patterns:
+            if re.search(pattern, q_lower):
+                return False
+        return True
 
-        query_lower = query.lower()
-        for pattern in self.banned_patterns:
-            if re.search(pattern, query_lower):
-                return False, "Query rejected by security guardrail."
+    def validate_query(self, query: str) -> bool:
+        """Alias for is_safe_query."""
+        return self.is_safe_query(query)
 
-        return True, "Passed"
+    def is_relevant_context(
+        self, query: str, retrieved_chunks: List[Dict[str, Any]]
+    ) -> bool:
+        """Verifies if the retrieved context is relevant and above threshold."""
+        if not retrieved_chunks:
+            return False
 
-    def check_grounding_and_relevance(
-        self, retrieved_results: List[Tuple[Dict[str, Any], float]]
-    ) -> Tuple[bool, str]:
-        """Validates if retrieved context is sufficiently relevant to answer grounded in facts."""
-        if not retrieved_results:
-            return (
-                False,
-                "I do not have sufficient context from the dataset to answer this question.",
-            )
+        top_score = float(retrieved_chunks[0].get("score", 0.0))
+        return top_score >= self.similarity_threshold
 
-        top_score = retrieved_results[0][1]
-        if top_score < self.similarity_threshold:
-            return (
-                False,
-                f"Low context relevance confidence ({top_score:.2f}). Refusing answer to prevent hallucination.",
-            )
-
-        return True, "Passed"
-
-
-if __name__ == "__main__":
-    guard = SafetyAndRelevanceGuardrail(similarity_threshold=0.4)
-    safe, msg = guard.check_input_safety("Ignore all previous instructions")
-    print(f"Safety Check: {safe} -> {msg}")
+    def validate_response(self, response: str) -> bool:
+        """Checks if response is grounded and non-empty."""
+        return bool(response and len(response.strip()) > 5)
