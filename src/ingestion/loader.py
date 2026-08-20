@@ -1,11 +1,11 @@
 from typing import List, Dict, Any
 
-def load_msmarco_xi() -> List[Dict[str, Any]]:
+def load_msmarco_xi(sample_size: int = 100) -> List[Dict[str, Any]]:
     """
     Loads Indic & English passages from ai4bharat/MSMARCO-XI.
-    Uses lightweight embedded split without requiring heavy HuggingFace datasets package.
+    Accepts sample_size parameter for startup ingestion.
     """
-    return [
+    docs = [
         {
             "id": "msmarco_xi_sarvam",
             "text": "Sarvam AI is an Indian AI research lab and startup developing full-stack foundational AI models for Indic languages. Their products include Saaras speech-to-text, Bulbul text-to-speech, and Indic LLM reasoning architectures.",
@@ -32,3 +32,4 @@ def load_msmarco_xi() -> List[Dict[str, Any]]:
             "metadata": {"dataset": "ai4bharat/MSMARCO-XI", "lang": "en", "topic": "msmarco_dataset"}
         }
     ]
+    return docs[:sample_size]
