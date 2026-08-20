@@ -9,40 +9,31 @@ class DenseRetriever:
         self.embedding_engine = embedding_engine
 
     def retrieve(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """Standard retrieve method expected by the harness."""
+        """Standard retrieve method expected by orchestrator."""
         return self.retrieve_relevant_chunks(query, top_k=top_k)
 
     def retrieve_relevant_chunks(
         self, query: str, top_k: int = 3
     ) -> List[Dict[str, Any]]:
-        """Embeds query and searches FAISS vector store with fallback handling."""
-        if not query or not query.strip():
+        """Embeds query, searches vector store, and standardizes output to dictionaries."""
+        if not query or not str(query).strip():
             return []
 
         query_vector = self.embedding_engine.embed_query(query)
-        # Ensure correct 2D shape for FAISS inner-product
         if query_vector.ndim == 1:
             query_vector = np.expand_dims(query_vector, axis=0)
 
-        results = self.vector_store.search(query_vector, top_k=top_k)
-        return results
+        raw_results = self.vector_store.search(query_vector, top_k=top_k)
 
-if __name__ == "__main__":
-    import numpy as np
+        # Standardize results into [{"chunk": chunk_data, "score": score}]
+        formatted_results = []
+        for item in raw_results:
+            if isinstance(item, tuple) and len(item) >= 2:
+                chunk, score = item[0], item[1]
+                formatted_results.append(
+                    {"chunk": chunk, "score": float(score)}
+                )
+            elif isinstance(item, dict):
+                formatted_results.append(item)
 
-    embedder = EmbeddingEngine()
-    vstore = VectorStore(dimension=embedder.dimension)
-
-    sample_chunks = [
-        {"chunk_id": "c1", "text": "Python is a popular programming language."},
-        {
-            "chunk_id": "c2",
-            "text": "Retrieval Augmented Generation enhances LLM context.",
-        },
-    ]
-    vecs = embedder.embed_texts([c["text"] for c in sample_chunks])
-    vstore.add_documents(vecs, sample_chunks)
-
-    retriever = DenseRetriever(vstore, embedder)
-    top_matches = retriever.retrieve("What is RAG?", top_k=1)
-    print("Retriever Test Result:", top_matches)
+        return formatted_results
