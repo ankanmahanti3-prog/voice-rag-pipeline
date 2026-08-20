@@ -35,7 +35,7 @@ class SarvamSTTClient:
 
         try:
             response = requests.post(
-                self.url, headers=headers, files=files, data=data, timeout=5.0
+                self.url, headers=headers, files=files, data=data, timeout=8.0
             )
             elapsed_ms = (time.perf_counter() - start_time) * 1000
 
@@ -50,3 +50,9 @@ class SarvamSTTClient:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             print(f"STT Exception: {e}")
             return "", elapsed_ms
+
+    def transcribe_audio_bytes(
+        self, audio_bytes: bytes, language_code: str = "en-IN"
+    ) -> Tuple[str, float]:
+        """Alias method matching main.py invocation."""
+        return self.transcribe(audio_bytes, language_code=language_code)
