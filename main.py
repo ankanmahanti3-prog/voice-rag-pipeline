@@ -11,7 +11,7 @@ from src.guardrails.guardrail import SafetyAndRelevanceGuardrail
 from src.harness.orchestrator import PipelineHarness, RAGResponse
 from src.llm.llm_client import FastLLMClient
 from src.retrieval.retriever import DenseRetriever
-from src.stt.stt_client import SarvamSTTClient
+from src.stt.stt_client import SarvamSTTClient, SarvamSTTError
 from src.vectordb.vector_store import VectorStore
 
 app = FastAPI(title="Voice-Enabled RAG Pipeline")
@@ -78,25 +78,68 @@ def startup_event():
     )
 
 
+def _empty_response(query: str, answer: str, stt_latency_ms: float = 0.0) -> dict:
+    """Shared shape for the 'nothing to work with' / 'failed before the
+    pipeline ran' cases — always status='error' so the frontend shows it
+    as an error rather than a real answer."""
+    return {
+        "query": query,
+        "answer": answer,
+        "grounded": False,
+        "sources": [],
+        "latency": {
+            "stt_ms": stt_latency_ms,
+            "embedding_ms": 0.0,
+            "retrieval_ms": 0.0,
+            "guardrail_ms": 0.0,
+            "llm_ms": 0.0,
+            "total_ms": stt_latency_ms,
+        },
+        "status": "error",
+    }
+
+
 @app.post("/query")
 async def process_query(
     query_text: str = Form(None),
     audio_file: UploadFile = File(None),
 ):
-    try:
-        stt_latency = 0.0
-        final_query = query_text
+    stt_latency = 0.0
+    final_query = (query_text or "").strip()
 
+    try:
         if audio_file:
             t0 = time.perf_counter()
             audio_bytes = await audio_file.read()
-            final_query = stt_client.transcribe_audio_bytes(
-                audio_bytes, filename=audio_file.filename
-            )
+            try:
+                final_query = stt_client.transcribe_audio_bytes(
+                    audio_bytes, filename=audio_file.filename
+                )
+            except SarvamSTTError as stt_exc:
+                stt_latency = round((time.perf_counter() - t0) * 1000, 2)
+                return JSONResponse(
+                    status_code=502,
+                    content=_empty_response(
+                        query="", answer=str(stt_exc), stt_latency_ms=stt_latency
+                    ),
+                )
             stt_latency = round((time.perf_counter() - t0) * 1000, 2)
 
+        # No fallback question here on purpose — silence, a failed
+        # transcription, or an empty text box must surface as an error,
+        # never get answered as if the user asked something.
         if not final_query:
-            final_query = "What is RAG?"
+            return JSONResponse(
+                status_code=400,
+                content=_empty_response(
+                    query="",
+                    answer=(
+                        "No speech detected. Please try speaking again, "
+                        "or type your question instead."
+                    ),
+                    stt_latency_ms=stt_latency,
+                ),
+            )
 
         response = harness.execute_pipeline(
             final_query, stt_latency_ms=stt_latency
@@ -104,21 +147,14 @@ async def process_query(
         return response.dict()
 
     except Exception as exc:
-        return {
-            "query": query_text or "voice_query",
-            "answer": f"Handled exception: {str(exc)}",
-            "grounded": False,
-            "sources": [],
-            "latency": {
-                "stt_ms": 0.0,
-                "embedding_ms": 0.0,
-                "retrieval_ms": 0.0,
-                "guardrail_ms": 0.0,
-                "llm_ms": 0.0,
-                "total_ms": 0.0,
-            },
-            "status": "error",
-        }
+        return JSONResponse(
+            status_code=500,
+            content=_empty_response(
+                query=final_query,
+                answer=f"Handled exception: {str(exc)}",
+                stt_latency_ms=stt_latency,
+            ),
+        )
 
 
 @app.get("/")

@@ -26,6 +26,34 @@ class RAGResponse(BaseModel):
     status: str = "success"
 
 
+def _normalize_source(chunk: Dict[str, Any]) -> Dict[str, Any]:
+    """Turns a raw retrieved chunk into the {title, meta, text} shape the
+    frontend renders. Written defensively since chunk shape depends on the
+    chunker/vector store — falls back gracefully if fields are missing."""
+    metadata = chunk.get("metadata") or {}
+    topic = metadata.get("topic")
+    dataset = metadata.get("dataset")
+    text = chunk.get("text", "") or ""
+    chunk_id = chunk.get("chunk_id") or chunk.get("id") or metadata.get("id")
+
+    if topic:
+        title = str(topic).replace("_", " ").replace("-", " ").strip().title()
+    elif text:
+        title = (text[:70] + "…") if len(text) > 70 else text
+    else:
+        title = str(chunk_id) if chunk_id else "Untitled source"
+
+    meta_parts = [str(p) for p in (dataset, chunk_id) if p]
+    meta = " • ".join(meta_parts)
+
+    return {
+        "id": chunk_id,
+        "title": title,
+        "meta": meta,
+        "text": text,
+    }
+
+
 class PipelineHarness:
 
     def __init__(
@@ -107,7 +135,7 @@ class PipelineHarness:
             query=query,
             answer=answer,
             grounded=True,
-            sources=matched_chunks,
+            sources=[_normalize_source(c) for c in matched_chunks],
             latency=breakdown,
             status="success",
         )
