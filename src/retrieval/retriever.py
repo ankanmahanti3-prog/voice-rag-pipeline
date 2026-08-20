@@ -9,16 +9,18 @@ class DenseRetriever:
         self.vector_store = vector_store
         self.embedder = embedder
 
-    def retrieve(
-    self, query: str, top_k: int = 3
-) -> List[Tuple[Dict[str, Any], float]]:
-    """Encodes a single user query and fetches top-K closest documents."""
-    query_vector = self.embedder.embed_query(query)
-    results = self.vector_store.search(
-        query_vector.reshape(1, -1),
-        top_k=top_k,
-    )
-    return results
+        def retrieve(
+        self,
+        query: str,
+        top_k: int = 3
+    ) -> List[Tuple[Dict[str, Any], float]]:
+            """Encodes a single user query and fetches top-k closest documents."""
+            query_vector = self.embedder.embed_query(query)
+            results = self.vector_store.search(
+                query_vector.reshape(1, -1),
+                top_k=top_k,
+            )
+            return results
 
 if __name__ == "__main__":
     import numpy as np
