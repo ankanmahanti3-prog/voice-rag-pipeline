@@ -40,7 +40,11 @@ body::before{
     border-bottom:1px solid rgba(190,205,235,0.32);
     box-shadow:0 1px 0 rgba(255,255,255,0.8) inset, 0 8px 32px -16px rgba(120,130,180,0.12);
 }
-.brand{font-size:13px;letter-spacing:-0.02em;color:#0C0C0C;font-weight:500}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-word{font-size:13px;letter-spacing:-0.02em;color:#0C0C0C;font-weight:500}
+.brand-mark{width:17px;height:17px;flex-shrink:0;overflow:visible}
+.brand-mark circle{fill:#FFFFFF;stroke:#0C0C0C;stroke-width:6}
+.brand-mark polygon{fill:#D7E4FF;stroke:#3d4a6b;stroke-width:2.6;stroke-linejoin:round}
 .header-right{display:flex;align-items:center;gap:12px;font-size:11px;color:#8E8C88}
 .status-cluster{display:flex;align-items:center;gap:7px}
 .header-sep{opacity:0.2}
