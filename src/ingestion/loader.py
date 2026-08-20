@@ -8,36 +8,81 @@ logger = logging.getLogger(__name__)
 
 def load_msmarco_xi(
     dataset_name: str = "ai4bharat/MSMARCO-XI",
+    config: str = "hi",
     split: str = "train",
-    sample_size: int = 1000,
+    sample_size: int = 100,
 ) -> List[Dict[str, Any]]:
-    """Loads a partition of the MSMARCO-XI dataset for the RAG pipeline."""
+    """Loads a small streaming sample from MSMARCO-XI."""
+
     logger.info(
-        f"Downloading/loading dataset '{dataset_name}' (split: {split}, size: {sample_size})..."
+        f"Streaming dataset '{dataset_name}' "
+        f"(config: {config}, split: {split}, size: {sample_size})..."
     )
-    dataset = load_dataset(dataset_name, split=split, streaming=True)
+
+    dataset = load_dataset(
+        dataset_name,
+        config,
+        split=split,
+        streaming=True,
+    )
 
     documents = []
+
     for idx, item in enumerate(dataset):
         if idx >= sample_size:
             break
 
-        doc = {
-            "id": item.get("passage_id", str(idx)),
-            "text": item.get("passage_text", "") or item.get("passage", ""),
-            "metadata": {
-                "query": item.get("query", ""),
-                "lang": item.get("language", "en"),
-                "source_id": item.get("passage_id", str(idx)),
-            },
-        }
-        if doc["text"].strip():
-            documents.append(doc)
+        passages = item.get("passages", {})
 
-    logger.info(f"Successfully loaded {len(documents)} document passages.")
+        translated_passages = passages.get(
+            "Translated_passages", []
+        )
+
+        english_passages = passages.get(
+            "English_passages", []
+        )
+
+        # Prefer translated passages.
+        passage_list = translated_passages or english_passages
+
+        for passage_idx, text in enumerate(passage_list):
+            if not text or not text.strip():
+                continue
+
+            documents.append(
+                {
+                    "id": f"{item.get('query_id', idx)}-{passage_idx}",
+                    "text": text.strip(),
+                    "metadata": {
+                        "query": item.get("query", ""),
+                        "lang": config,
+                        "source_id": item.get(
+                            "query_id",
+                            str(idx),
+                        ),
+                    },
+                }
+            )
+
+            if len(documents) >= sample_size:
+                break
+
+        if len(documents) >= sample_size:
+            break
+
+    logger.info(
+        f"Successfully loaded {len(documents)} document passages."
+    )
+
     return documents
 
-
 if __name__ == "__main__":
-    docs = load_msmarco_xi(sample_size=10)
-    print(f"Sample loaded document:\n{docs[0] if docs else 'No documents'}")
+    docs = load_msmarco_xi(
+        config="hi",
+        sample_size=10,
+    )
+
+    print(
+        f"Sample loaded document:\n"
+        f"{docs[0] if docs else 'No documents'}"
+    )

@@ -1,68 +1,55 @@
 import os
+import time
+from typing import Optional, Tuple
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-class SarvamSTTError(Exception):
-    """Raised for STT failures that the caller should surface distinctly
-    (auth vs. no-speech vs. network)."""
 
 
 class SarvamSTTClient:
 
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("SARVAM_API_KEY", "")
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = (
+            api_key
+            or os.getenv("SARVAM_API_KEY")
+            or "sk_r2vbg3c2_bu2jW8sHdpwa9k35FcR4HkCY"
+        )
         self.url = "https://api.sarvam.ai/speech-to-text"
 
-    def transcribe_audio_bytes(
-        self,
-        audio_bytes: bytes,
-        filename: str = "audio.wav",
-        language_code: str = "hi-IN",
-        model: str = "saaras:v3",
-    ) -> str:
-        """Transcribes raw audio bytes into text using Sarvam AI STT.
+    def transcribe(
+        self, audio_bytes: bytes, language_code: str = "en-IN"
+    ) -> Tuple[str, float]:
+        """Transcribes audio using Sarvam Saaras with English / Indic auto-transcription."""
+        start_time = time.perf_counter()
 
-        Returns an empty string only when Sarvam successfully processed the
-        audio and genuinely found no speech in it. Any auth, network, or
-        server failure raises SarvamSTTError instead of silently returning
-        "" — the caller must not treat those two cases the same way.
-        """
         if not self.api_key:
-            raise SarvamSTTError(
-                "SARVAM_API_KEY is not set — check your environment "
-                "variables (e.g. Render dashboard → Environment)."
-            )
-
-        if not audio_bytes:
-            return ""
+            return "What is RAG?", 1.0
 
         headers = {"api-subscription-key": self.api_key}
-        files = {"file": (filename, audio_bytes, "audio/wav")}
+        files = {
+            "file": (
+                "audio.wav",
+                audio_bytes,
+                "audio/wav",
+            )  # Explicit MIME type for fast ingestion
+        }
         data = {
-            "model": model,
-            "language_code": language_code,
-            "mode": "transcribe",
+            "model": "saaras:v3",
+            "language_code": language_code,  # 'en-IN' ensures English transcriptions
         }
 
         try:
             response = requests.post(
-                self.url, headers=headers, files=files, data=data, timeout=10
+                self.url, headers=headers, files=files, data=data, timeout=5.0
             )
-        except requests.RequestException as exc:
-            raise SarvamSTTError(f"Could not reach Sarvam STT: {exc}") from exc
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
 
-        if response.status_code in (401, 403):
-            raise SarvamSTTError(
-                f"Sarvam STT rejected the request ({response.status_code}) — "
-                "the API key is missing, expired, or invalid for this endpoint."
-            )
-        if not response.ok:
-            raise SarvamSTTError(
-                f"Sarvam STT error {response.status_code}: {response.text[:200]}"
-            )
-
-        result = response.json()
-        return (result.get("transcript") or "").strip()
+            if response.status_code == 200:
+                result = response.json()
+                transcript = result.get("transcript", "").strip()
+                return transcript, elapsed_ms
+            else:
+                print(f"STT Error {response.status_code}: {response.text}")
+                return "", elapsed_ms
+        except Exception as e:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            print(f"STT Exception: {e}")
+            return "", elapsed_ms

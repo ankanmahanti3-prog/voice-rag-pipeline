@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.chunking.chunker import MultiStrategyChunker
+from src.ingestion.loader import load_msmarco_xi
 from src.embeddings.embedder import EmbeddingEngine
 from src.guardrails.guardrail import SafetyAndRelevanceGuardrail
 from src.harness.orchestrator import PipelineHarness, RAGResponse
@@ -40,39 +41,16 @@ harness = PipelineHarness(retriever, llm_client, guardrail)
 @app.on_event("startup")
 def startup_event():
     print("Populating Knowledge Base from MSMARCO-XI...")
-    msmarco_docs = [
-        {
-            "id": "doc_sarvam",
-            "text": "Sarvam AI is an Indian generative AI startup that develops foundational models for Indic languages. Their products include the Saaras speech-to-text model, IndicLLMs, and voice APIs.",
-            "metadata": {
-                "dataset": "ai4bharat/MSMARCO-XI",
-                "topic": "sarvam_ai",
-            },
-        },
-        {
-            "id": "doc_rag",
-            "text": "Retrieval-Augmented Generation (RAG) is an AI architecture that combines search algorithms with Large Language Models. It retrieves verified factual passages from an external vector index to ground output accuracy.",
-            "metadata": {"dataset": "ai4bharat/MSMARCO-XI", "topic": "rag_ai"},
-        },
-        {
-            "id": "doc_faiss",
-            "text": "FAISS (Facebook AI Similarity Search) is an open-source library for dense vector clustering and sub-millisecond similarity search across high-dimensional embeddings.",
-            "metadata": {"dataset": "ai4bharat/MSMARCO-XI", "topic": "faiss_db"},
-        },
-        {
-            "id": "doc_msmarco",
-            "text": "The MSMARCO-XI dataset provided by AI4Bharat is an Indic multilingual benchmark for machine reading comprehension and passage retrieval across Indian languages.",
-            "metadata": {
-                "dataset": "ai4bharat/MSMARCO-XI",
-                "topic": "msmarco_dataset",
-            },
-        },
-    ]
+
+    msmarco_docs = load_msmarco_xi(
+        sample_size=100,
+    )
 
     chunker = MultiStrategyChunker()
     chunks = chunker.chunk_all(msmarco_docs, strategy="metadata_aware")
     vectors = embedder.embed_texts([c["text"] for c in chunks])
     vstore.add_documents(vectors, chunks)
+
     print(
         f"Indexed {len(chunks)} chunks into FAISS from MSMARCO-XI successfully."
     )
