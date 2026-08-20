@@ -4,6 +4,12 @@ from typing import Optional, Tuple
 import requests
 
 
+class SarvamSTTError(Exception):
+    """Custom exception raised for Sarvam STT API failures."""
+
+    pass
+
+
 class SarvamSTTClient:
 
     def __init__(self, api_key: Optional[str] = None):
@@ -17,24 +23,15 @@ class SarvamSTTClient:
     def transcribe(
         self, audio_bytes: bytes, language_code: str = "en-IN"
     ) -> Tuple[str, float]:
-        """Transcribes audio using Sarvam Saaras with English / Indic auto-transcription."""
+        """Transcribes speech using Sarvam Saaras API with latency measurement."""
         start_time = time.perf_counter()
 
         if not self.api_key:
             return "What is RAG?", 1.0
 
         headers = {"api-subscription-key": self.api_key}
-        files = {
-            "file": (
-                "audio.wav",
-                audio_bytes,
-                "audio/wav",
-            )  # Explicit MIME type for fast ingestion
-        }
-        data = {
-            "model": "saaras:v3",
-            "language_code": language_code,  # 'en-IN' ensures English transcriptions
-        }
+        files = {"file": ("audio.wav", audio_bytes, "audio/wav")}
+        data = {"model": "saaras:v3", "language_code": language_code}
 
         try:
             response = requests.post(
