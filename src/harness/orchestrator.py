@@ -1,7 +1,6 @@
 import time
-from typing import Any, Dict, List, Optional
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-
 
 class LatencyBreakdown(BaseModel):
     stt_ms: float = 0.0
@@ -9,8 +8,7 @@ class LatencyBreakdown(BaseModel):
     llm_ms: float = 0.0
     total_ms: float = 0.0
 
-
-class PipelineResponse(BaseModel):
+class RAGResponse(BaseModel):
     query: str
     answer: str
     status: str
@@ -18,23 +16,22 @@ class PipelineResponse(BaseModel):
     sources: List[Dict[str, Any]] = []
     latencies: LatencyBreakdown
 
+# Alias for backwards compatibility
+PipelineResponse = RAGResponse
 
 class PipelineHarness:
-
     def __init__(self, retriever, llm_client, guardrail):
         self.retriever = retriever
         self.llm_client = llm_client
         self.guardrail = guardrail
 
-    def execute_pipeline(
-        self, query: str, stt_latency: float = 0.0
-    ) -> PipelineResponse:
+    def execute_pipeline(self, query: str, stt_latency: float = 0.0) -> RAGResponse:
         start_total = time.perf_counter()
 
         # Step 1: Guardrail Check (Input Safety)
         if not self.guardrail.is_safe_query(query):
             total_ms = (time.perf_counter() - start_total) * 1000
-            return PipelineResponse(
+            return RAGResponse(
                 query=query,
                 answer="Input query flagged by safety guardrails.",
                 status="refused_unsafe",
@@ -43,8 +40,8 @@ class PipelineHarness:
                     stt_ms=round(stt_latency, 2),
                     retrieval_ms=0.0,
                     llm_ms=0.0,
-                    total_ms=round(total_ms, 2),
-                ),
+                    total_ms=round(total_ms, 2)
+                )
             )
 
         # Step 2: Dense Retrieval (< 50ms)
@@ -53,11 +50,9 @@ class PipelineHarness:
         retrieval_ms = (time.perf_counter() - r_start) * 1000
 
         # Step 3: Guardrail Check (Relevance / Groundedness)
-        if not results or not self.guardrail.is_relevant_context(
-            query, results
-        ):
+        if not results or not self.guardrail.is_relevant_context(query, results):
             total_ms = (time.perf_counter() - start_total) * 1000
-            return PipelineResponse(
+            return RAGResponse(
                 query=query,
                 answer="Query is out-of-domain. Refusing answer to prevent hallucination.",
                 status="refused_low_confidence",
@@ -66,21 +61,20 @@ class PipelineHarness:
                     stt_ms=round(stt_latency, 2),
                     retrieval_ms=round(retrieval_ms, 2),
                     llm_ms=0.0,
-                    total_ms=round(total_ms, 2),
-                ),
+                    total_ms=round(total_ms, 2)
+                )
             )
 
-        # Step 4: Extract Grounded Answer & Measure Latency (< 100ms)
+        # Step 4: Extract Grounded Answer & Latency
         llm_start = time.perf_counter()
         top_context = results[0]["chunk"]["text"]
         confidence = float(results[0]["score"])
-
-        # Grounded answer directly from verified MSMARCO context
+        
         answer = top_context
         llm_ms = (time.perf_counter() - llm_start) * 1000
         total_ms = (time.perf_counter() - start_total) * 1000
 
-        return PipelineResponse(
+        return RAGResponse(
             query=query,
             answer=answer,
             status="success",
@@ -90,6 +84,6 @@ class PipelineHarness:
                 stt_ms=round(stt_latency, 2),
                 retrieval_ms=round(retrieval_ms, 2),
                 llm_ms=round(llm_ms, 2),
-                total_ms=round(total_ms, 2),
-            ),
+                total_ms=round(total_ms, 2)
+            )
         )
