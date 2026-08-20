@@ -21,16 +21,20 @@ class SarvamSTTClient:
         self.url = "https://api.sarvam.ai/speech-to-text"
 
     def transcribe(
-        self, audio_bytes: bytes, language_code: str = "en-IN"
+        self,
+        audio_bytes: bytes,
+        filename: str = "audio.wav",
+        language_code: str = "en-IN",
+        **kwargs,
     ) -> Tuple[str, float]:
-        """Transcribes speech using Sarvam Saaras API with latency measurement."""
+        """Transcribes speech using Sarvam Saaras API with flexible parameter handling."""
         start_time = time.perf_counter()
 
         if not self.api_key:
             return "What is RAG?", 1.0
 
         headers = {"api-subscription-key": self.api_key}
-        files = {"file": ("audio.wav", audio_bytes, "audio/wav")}
+        files = {"file": (filename, audio_bytes, "audio/wav")}
         data = {"model": "saaras:v3", "language_code": language_code}
 
         try:
@@ -52,7 +56,16 @@ class SarvamSTTClient:
             return "", elapsed_ms
 
     def transcribe_audio_bytes(
-        self, audio_bytes: bytes, language_code: str = "en-IN"
+        self,
+        audio_bytes: bytes,
+        filename: str = "audio.wav",
+        language_code: str = "en-IN",
+        **kwargs,
     ) -> Tuple[str, float]:
-        """Alias method matching main.py invocation."""
-        return self.transcribe(audio_bytes, language_code=language_code)
+        """Transcribes raw audio bytes with keyword support."""
+        return self.transcribe(
+            audio_bytes,
+            filename=filename,
+            language_code=language_code,
+            **kwargs,
+        )
