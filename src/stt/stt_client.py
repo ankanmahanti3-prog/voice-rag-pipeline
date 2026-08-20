@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 import requests
 
 
@@ -19,6 +19,7 @@ class SarvamSTTClient:
             or "sk_r2vbg3c2_bu2jW8sHdpwa9k35FcR4HkCY"
         )
         self.url = "https://api.sarvam.ai/speech-to-text"
+        self.last_latency_ms = 0.0
 
     def transcribe(
         self,
@@ -27,7 +28,7 @@ class SarvamSTTClient:
         language_code: str = "en-IN",
         **kwargs,
     ) -> Tuple[str, float]:
-        """Transcribes speech using Sarvam Saaras API with flexible parameter handling."""
+        """Transcribes speech using Sarvam Saaras API."""
         start_time = time.perf_counter()
 
         if not self.api_key:
@@ -42,6 +43,7 @@ class SarvamSTTClient:
                 self.url, headers=headers, files=files, data=data, timeout=8.0
             )
             elapsed_ms = (time.perf_counter() - start_time) * 1000
+            self.last_latency_ms = elapsed_ms
 
             if response.status_code == 200:
                 result = response.json()
@@ -52,6 +54,7 @@ class SarvamSTTClient:
                 return "", elapsed_ms
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
+            self.last_latency_ms = elapsed_ms
             print(f"STT Exception: {e}")
             return "", elapsed_ms
 
@@ -61,11 +64,12 @@ class SarvamSTTClient:
         filename: str = "audio.wav",
         language_code: str = "en-IN",
         **kwargs,
-    ) -> Tuple[str, float]:
-        """Transcribes raw audio bytes with keyword support."""
-        return self.transcribe(
+    ) -> str:
+        """Returns plain transcript string expected by main.py."""
+        transcript, _ = self.transcribe(
             audio_bytes,
             filename=filename,
             language_code=language_code,
             **kwargs,
         )
+        return transcript
