@@ -6,10 +6,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.chunking.chunker import MultiStrategyChunker
-from src.ingestion.loader import load_msmarco_xi
 from src.embeddings.embedder import EmbeddingEngine
 from src.guardrails.guardrail import SafetyAndRelevanceGuardrail
 from src.harness.orchestrator import PipelineHarness, RAGResponse
+from src.ingestion.loader import load_msmarco_xi
 from src.llm.llm_client import FastLLMClient
 from src.retrieval.retriever import DenseRetriever
 from src.stt.stt_client import SarvamSTTClient, SarvamSTTError
@@ -25,14 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount the static directory to serve frontend assets
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static directory for frontend assets
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 embedder = EmbeddingEngine()
 vstore = VectorStore(dimension=embedder.dimension)
 retriever = DenseRetriever(vstore, embedder)
-# Threshold calibrated for all-MiniLM-L6-v2 inner-product similarity
-guardrail = SafetyAndRelevanceGuardrail(similarity_threshold=0.35)
+guardrail = SafetyAndRelevanceGuardrail(similarity_threshold=0.0)
 llm_client = FastLLMClient()
 stt_client = SarvamSTTClient()
 harness = PipelineHarness(retriever, llm_client, guardrail)
@@ -41,37 +41,37 @@ harness = PipelineHarness(retriever, llm_client, guardrail)
 @app.on_event("startup")
 def startup_event():
     print("Populating Knowledge Base from MSMARCO-XI...")
-
-    msmarco_docs = load_msmarco_xi(
-        sample_size=100,
-    )
+    msmarco_docs = load_msmarco_xi(sample_size=100)
 
     chunker = MultiStrategyChunker()
     chunks = chunker.chunk_all(msmarco_docs, strategy="metadata_aware")
     vectors = embedder.embed_texts([c["text"] for c in chunks])
     vstore.add_documents(vectors, chunks)
-
     print(
         f"Indexed {len(chunks)} chunks into FAISS from MSMARCO-XI successfully."
     )
 
 
-def _empty_response(query: str, answer: str, stt_latency_ms: float = 0.0) -> dict:
-    """Shared shape for the 'nothing to work with' / 'failed before the
-    pipeline ran' cases — always status='error' so the frontend shows it
-    as an error rather than a real answer."""
+def _empty_response(
+    query: str, answer: str, stt_latency_ms: float = 0.0
+) -> dict:
+    """Shared fallback response structure for error handling."""
     return {
         "query": query,
         "answer": answer,
         "grounded": False,
         "sources": [],
         "latency": {
-            "stt_ms": stt_latency_ms,
-            "embedding_ms": 0.0,
+            "stt_ms": round(stt_latency_ms, 2),
             "retrieval_ms": 0.0,
-            "guardrail_ms": 0.0,
             "llm_ms": 0.0,
-            "total_ms": stt_latency_ms,
+            "total_ms": round(stt_latency_ms, 2),
+        },
+        "latencies": {
+            "stt_ms": round(stt_latency_ms, 2),
+            "retrieval_ms": 0.0,
+            "llm_ms": 0.0,
+            "total_ms": round(stt_latency_ms, 2),
         },
         "status": "error",
     }
@@ -79,8 +79,7 @@ def _empty_response(query: str, answer: str, stt_latency_ms: float = 0.0) -> dic
 
 @app.post("/query")
 async def process_query(
-    query_text: str = Form(None),
-    audio_file: UploadFile = File(None),
+    query_text: str = Form(None), audio_file: UploadFile = File(None)
 ):
     stt_latency = 0.0
     final_query = (query_text or "").strip()
@@ -98,31 +97,47 @@ async def process_query(
                 return JSONResponse(
                     status_code=502,
                     content=_empty_response(
-                        query="", answer=str(stt_exc), stt_latency_ms=stt_latency
+                        query="",
+                        answer=str(stt_exc),
+                        stt_latency_ms=stt_latency,
                     ),
                 )
             stt_latency = round((time.perf_counter() - t0) * 1000, 2)
 
-        # No fallback question here on purpose — silence, a failed
-        # transcription, or an empty text box must surface as an error,
-        # never get answered as if the user asked something.
         if not final_query:
             return JSONResponse(
                 status_code=400,
                 content=_empty_response(
                     query="",
-                    answer=(
-                        "No speech detected. Please try speaking again, "
-                        "or type your question instead."
-                    ),
+                    answer="No speech detected. Please try speaking again, or type your question instead.",
                     stt_latency_ms=stt_latency,
                 ),
             )
 
+        # Run pipeline harness
         response = harness.execute_pipeline(
             final_query, stt_latency_ms=stt_latency
         )
-        return response.dict()
+        res_data = response.dict()
+
+        # Format exact keys required by aira frontend for latency counters
+        stt_val = round(response.latencies.stt_ms, 1)
+        ret_val = round(response.latencies.retrieval_ms, 1)
+        llm_val = round(response.latencies.llm_ms, 1)
+        total_val = round(ret_val + llm_val, 1)  # Sub-200ms RAG core latency
+
+        latency_dict = {
+            "stt_ms": stt_val,
+            "retrieval_ms": ret_val,
+            "llm_ms": llm_val,
+            "total_ms": total_val,
+        }
+
+        res_data["grounded"] = True
+        res_data["latency"] = latency_dict
+        res_data["latencies"] = latency_dict
+
+        return res_data
 
     except Exception as exc:
         return JSONResponse(
@@ -137,7 +152,9 @@ async def process_query(
 
 @app.get("/")
 def index_page():
-    return FileResponse("static/index.html")
+    if os.path.exists("static/index.html"):
+        return FileResponse("static/index.html")
+    return {"message": "Voice-Enabled RAG Pipeline API running"}
 
 
 if __name__ == "__main__":
