@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<style>
+  .dot { fill:#FFFFFF; stroke:#0C0C0C; }
+  .hex { fill:#D7E4FF; stroke:#3d4a6b; }
+  @media (prefers-color-scheme: dark) {
+    .dot { fill:#161B2E; stroke:#F4F6FF; }
+    .hex { fill:#3A4E86; stroke:#AFC2F5; }
+  }
+</style>
+<polygon class="hex" points="59.96,44.25 59.96,55.75 50.00,61.50 40.04,55.75 40.04,44.25 50.00,38.50" stroke-width="2.6" stroke-linejoin="round"/>
+<circle class="dot" cx="80.00" cy="50.00" r="10.50" stroke-width="3.6"/><circle class="dot" cx="65.00" cy="75.98" r="10.50" stroke-width="3.6"/><circle class="dot" cx="35.00" cy="75.98" r="10.50" stroke-width="3.6"/><circle class="dot" cx="20.00" cy="50.00" r="10.50" stroke-width="3.6"/><circle class="dot" cx="35.00" cy="24.02" r="10.50" stroke-width="3.6"/><circle class="dot" cx="65.00" cy="24.02" r="10.50" stroke-width="3.6"/>
+</svg>
