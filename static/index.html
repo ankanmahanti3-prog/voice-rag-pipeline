@@ -29,6 +29,8 @@
             <div id="voiceCenter" class="voice-center">
 
                 <div id="orbWrap" class="orb-wrap" tabindex="0" role="button" aria-label="Press to speak">
+                    <div class="invite invite-1"></div>
+                    <div class="invite invite-2"></div>
                     <div class="aura aura-1"></div>
                     <div class="aura aura-2"></div>
                     <div id="hexOrb" class="hex-orb">
@@ -46,8 +48,8 @@
                 </div>
 
                 <div class="orb-caption">
-                    <div class="label mono">press to speak. pause to submit.</div>
-                    <button id="typeBtn" class="mono type-link">or type your query</button>
+                    <div class="label mono orb-caption-text">tap the orb to speak</div>
+                    <div class="label mono orb-caption-sub">pause when you're done — aira submits automatically</div>
                 </div>
 
                 <div class="hint-row">
@@ -61,10 +63,6 @@
                 </div>
                 <div id="transcript" class="transcript-body">
                     <span class="placeholder">your words will appear here...</span>
-                </div>
-                <div id="typeRow" class="type-row" style="display:none">
-                    <input type="text" id="queryInput" class="type-input" placeholder="type your question and hit enter…" />
-                    <button id="sendBtn" class="mono send-btn">Send</button>
                 </div>
             </div>
 

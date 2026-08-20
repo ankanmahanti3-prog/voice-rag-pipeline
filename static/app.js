@@ -15,10 +15,6 @@ const hint = document.getElementById('hint');
 const voiceCenter = document.getElementById('voiceCenter');
 
 const transcriptEl = document.getElementById('transcript');
-const typeBtn = document.getElementById('typeBtn');
-const typeRow = document.getElementById('typeRow');
-const queryInput = document.getElementById('queryInput');
-const sendBtn = document.getElementById('sendBtn');
 
 const answerHeadline = document.getElementById('answerHeadline');
 const answerKickerText = document.getElementById('answerKickerText');
@@ -112,20 +108,6 @@ function animateLive() {
     raf = requestAnimationFrame(animateLive);
 }
 
-// fallback simulated bars if mic analyser isn't available
-function animateSim() {
-    const t = Date.now() / 1000;
-    const pats = [Math.sin(t * 3.1) * 0.5 + 0.5, Math.sin(t * 4.0 + 0.7) * 0.5 + 0.5, Math.sin(t * 3.5 + 1.6) * 0.5 + 0.5, Math.sin(t * 4.4 + 0.2) * 0.5 + 0.5];
-    barEls.forEach((el, i) => {
-        const h = 18 + pats[i] * 38 + Math.random() * 2;
-        const f = 15 + pats[i] * 60;
-        el.style.height = h + 'px';
-        el.style.setProperty('--fill', f + '%');
-        el.classList.add('filled');
-    });
-    if (state === 'listening' && !analyser) raf = requestAnimationFrame(animateSim);
-}
-
 // the orb "collapse back to hex" transition when recording stops
 function playStopAnimation() {
     barEls.forEach((b, i) => {
@@ -201,8 +183,11 @@ async function startListening() {
         // optional cosmetic live captions
         startLiveCaptions();
     } catch (err) {
-        console.warn('Mic unavailable, falling back to simulated bars:', err);
-        animateSim();
+        console.warn('Microphone unavailable:', err);
+        if (raf) cancelAnimationFrame(raf);
+        setState('error');
+        setAnswer("Couldn't access your microphone — check your browser's mic permissions and try again.");
+        setTimeout(() => { setState('idle'); idleBreath(); }, 2400);
     }
 }
 
@@ -365,28 +350,6 @@ async function submitQuery(formData) {
     }
 }
 
-// --- typed query flow ---
-function submitTypedQuery() {
-    const text = queryInput.value.trim();
-    if (!text) return;
-    transcriptEl.innerHTML = `<span>${escapeHtml(text)}</span>`;
-    hideAnswerMeta();
-    setState('retrieving');
-    const formData = new FormData();
-    formData.append('query_text', text);
-    submitQuery(formData);
-    queryInput.value = '';
-}
-
-sendBtn.addEventListener('click', submitTypedQuery);
-queryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') submitTypedQuery(); });
-
-typeBtn.addEventListener('click', () => {
-    const showing = typeRow.style.display !== 'none';
-    typeRow.style.display = showing ? 'none' : 'flex';
-    if (!showing) queryInput.focus();
-});
-
 // --- orb interactions ---
 orbWrap.addEventListener('click', () => {
     if (state === 'idle') startListening();
@@ -400,7 +363,7 @@ orbWrap.addEventListener('keydown', (e) => {
     }
 });
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && document.activeElement !== queryInput) {
+    if (e.code === 'Space' && document.activeElement !== orbWrap) {
         e.preventDefault();
         if (state === 'idle') startListening();
         else if (state === 'listening') stopListening();
